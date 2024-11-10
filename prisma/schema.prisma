@@ -1,0 +1,72 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               BigInt            @id @default(autoincrement()) @db.BigInt
+  username         String            @unique @db.VarChar(50)
+  password         String            @db.VarChar(50)
+  userQuizSessions UserQuizSession[]
+
+  @@map("users")
+}
+
+model QuizSession {
+  id           BigInt                @id @default(autoincrement()) @db.BigInt
+  name         String                @db.VarChar(150)
+  participants UserQuizSession[]
+  questions    QuizSessionQuestion[]
+
+  @@map("quiz_sessions")
+}
+
+model Question {
+  id        BigInt                @id @default(autoincrement()) @db.BigInt
+  content   String                @db.VarChar
+  category  String                @default("single") @db.VarChar(25)
+  data      Json                  @default("{\"options\": [],\"answers\":[]}") @db.JsonB
+  status    String                @default("draft") @db.VarChar(25)
+  createdAt DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime?             @map("updated_at") @db.Timestamptz(3)
+  sessions  QuizSessionQuestion[]
+
+  @@map("questions")
+}
+
+model QuizSessionQuestion {
+  id         BigInt      @id @default(autoincrement()) @db.BigInt
+  score      Int
+  sessionId  BigInt      @map("quiz_session_id") @db.BigInt
+  session    QuizSession @relation(fields: sessionId, references: id)
+  questionId BigInt      @map("question_id") @db.BigInt
+  question   Question    @relation(fields: questionId, references: id)
+
+  @@unique([sessionId, questionId])
+  @@map("quiz_session_questions")
+}
+
+model UserQuizSession {
+  id             BigInt      @id @default(autoincrement()) @db.BigInt
+  answer         Json        @default("{}") @db.JsonB
+  score          Int         @default(0)
+  participatedAt DateTime    @default(now()) @map("participated_at") @db.Timestamptz(3)
+  updatedAt      DateTime?   @map("updated_at") @db.Timestamptz(3)
+  userId         BigInt      @map("user_id") @db.BigInt
+  user           User        @relation(fields: userId, references: id)
+  sessionId      BigInt      @map("quiz_session_id") @db.BigInt
+  session        QuizSession @relation(fields: sessionId, references: id)
+
+  @@unique([userId, sessionId])
+  @@map("user_quiz_sessions")
+}
